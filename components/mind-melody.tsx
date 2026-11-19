@@ -28,8 +28,8 @@ const questions = [
 ]
 
 export function MindMelody() {
-  const [intro, setIntro] = useState(true)
-  const [introLeaving, setIntroLeaving] = useState(false)
+  const [pianoPlaying, setPianoPlaying] = useState(false)
+  const [pianoError, setPianoError] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [room, setRoom] = useState<string | null>(null)
   const [mood, setMood] = useState<Mood | null>(null)
@@ -37,22 +37,14 @@ export function MindMelody() {
   const [muted, setMuted] = useState(false)
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
   const carousel = useRef<HTMLDivElement>(null)
-  const cursor = useRef<HTMLDivElement>(null)
   const audio = useRef<AudioContext | null>(null)
   const oscillators = useRef<{ oscillator: OscillatorNode; gain: GainNode }[]>([])
   const stopTimer = useRef<number | null>(null)
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIntro(false), 3600)
-    const move = (event: PointerEvent) => {
-      if (!cursor.current) return
-      cursor.current.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`
-      cursor.current.classList.toggle('cursor-hover', Boolean((event.target as HTMLElement).closest('a,button,input,[role="button"]')))
-    }
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { setMenuOpen(false); setRoom(null) } }
-    window.addEventListener('pointermove', move)
     window.addEventListener('keydown', key)
-    return () => { window.clearTimeout(timer); window.removeEventListener('pointermove', move); window.removeEventListener('keydown', key); oscillators.current.forEach(({ oscillator }) => { try { oscillator.stop() } catch {} }); if (audio.current) void audio.current.close() }
+    return () => { window.removeEventListener('keydown', key); oscillators.current.forEach(({ oscillator }) => { try { oscillator.stop() } catch {} }); if (audio.current) void audio.current.close() }
   }, [])
 
   const stopSound = useCallback(() => {
@@ -71,6 +63,8 @@ export function MindMelody() {
 
   const playMood = useCallback(async (selected: Mood, force = false) => {
     setMood(selected)
+    setPianoPlaying(false)
+    setPianoError(false)
     stopSound()
     if (muted && !force) return
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -97,30 +91,63 @@ export function MindMelody() {
     stopTimer.current = window.setTimeout(() => { oscillators.current = [] }, selected.frequencies.length * step * 1000 + 600)
   }, [muted, stopSound])
 
+  const playPianoPhrase = useCallback(async () => {
+    setPianoError(false)
+    if (pianoPlaying) { stopSound(); setPianoPlaying(false); return }
+    setPianoPlaying(false)
+    stopSound()
+    if (muted) { setPianoError(true); return }
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextClass) { setPianoError(true); return }
+    try {
+      const context = audio.current ?? new AudioContextClass()
+      audio.current = context
+      if (context.state === 'suspended') await context.resume()
+      const now = context.currentTime
+      const phrase = [659.25, 783.99, 880, 783.99, 659.25, 587.33, 523.25]
+      const spacing = 0.31
+      phrase.forEach((frequency, index) => {
+        const start = now + index * spacing
+        const oscillator = context.createOscillator()
+        const gain = context.createGain()
+        oscillator.type = 'triangle'
+        oscillator.frequency.setValueAtTime(frequency, start)
+        oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.998, start + 0.12)
+        gain.gain.setValueAtTime(0.0001, start)
+        gain.gain.exponentialRampToValueAtTime(0.055, start + 0.025)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.27)
+        oscillator.connect(gain)
+        gain.connect(context.destination)
+        oscillator.start(start)
+        oscillator.stop(start + 0.29)
+        oscillators.current.push({ oscillator, gain })
+      })
+      setPianoPlaying(true)
+      stopTimer.current = window.setTimeout(() => { oscillators.current = []; setPianoPlaying(false) }, phrase.length * spacing * 1000)
+    } catch {
+      stopSound()
+      setPianoError(true)
+    }
+  }, [muted, pianoPlaying, stopSound])
+
   const toggleMute = () => {
-    if (!muted) stopSound()
+    if (!muted) { stopSound(); setPianoPlaying(false) }
     setMuted(!muted)
     if (muted && mood) void playMood(mood, true)
-  }
-
-  const leaveIntro = () => {
-    setIntroLeaving(true)
-    window.setTimeout(() => setIntro(false), 650)
   }
   const response = impact > 70 ? 'Musik jelas jadi bagian penting dari dunia emosimu.' : impact > 35 ? 'Kamu tahu kapan sebuah lagu bisa menemanimu.' : 'Mungkin kamu peneliti psikologi musik masa depan.'
   const enterRoom = (next: string) => { setMenuOpen(false); setRoom(next) }
 
-  return <main className={intro ? 'mind-app intro-active' : 'mind-app'}>
+  return <main className="mind-app">
     <div className="grain" aria-hidden="true" />
-    <div className="custom-cursor" ref={cursor} aria-hidden="true"><span>♪</span></div>
-    {intro && <div className={introLeaving ? 'intro-screen intro-leaving' : 'intro-screen'} role="dialog" aria-label="Mind Melody by Syan" aria-modal="true"><div className="intro-glow"/><div className="intro-orbit intro-orbit-a"/><div className="intro-orbit intro-orbit-b"/><span className="intro-note intro-note-one">♫</span><span className="intro-note intro-note-two">♪</span><span className="intro-note intro-heart">♥</span><span className="intro-pet intro-bunny"><Rabbit size={18}/></span><span className="intro-pet intro-cat"><Cat size={16}/></span><div className="intro-wave">{Array.from({length:19},(_,i)=><i key={i} style={{'--height':`${Math.round(9+Math.abs(Math.sin(i*.55))*26)}px`} as React.CSSProperties}/>)}</div><div className="intro-copy"><span className="intro-kicker">A LITTLE WORLD BY SYAN</span><h1>Mind <em>Melody</em></h1><p>Exploring humans through psychology, music, and research.</p><span className="intro-by">by Syan</span></div><button className="intro-enter" onClick={leaveIntro}>Enter <ArrowUpRight size={14}/></button></div>}
 
-    <header className="site-header"><a className="wordmark" href="#home" aria-label="Syan, home">syan<span>✳</span></a><div className="header-note">A MIND IN PROGRESS <span>·</span> JAKARTA, ID</div><button className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><span>EXPLORE</span><Music2 size={16}/></button></header>
+    <header className="site-header"><a className="wordmark" href="#home" aria-label="Syan, home">syan<span>✳</span></a><div className="header-note">A MIND IN PROGRESS <span>·</span> ALWAYS CURIOUS</div><button className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><span>EXPLORE</span><Music2 size={16}/></button></header>
 
-    <section className="hero" id="home" onPointerMove={(event)=>{const box=event.currentTarget.getBoundingClientRect();event.currentTarget.style.setProperty('--px',`${(event.clientX-box.left)/box.width*100}%`);event.currentTarget.style.setProperty('--py',`${(event.clientY-box.top)/box.height*100}%`)}}>
-      <div className="hero-copy"><div className="section-number"><span>01</span><i/> MIND MELODY</div><p className="hero-overline">A small study of big feelings</p><h1 className="hero-title"><span>Mind</span><em>Melody</em><span className="hero-title-star">✳</span></h1><p className="hero-subtitle">Exploring humans through psychology,<br/>music, and research.</p><div className="hero-identity"><strong>Syan / Isyana Arlisya</strong><span>Writing as Musyi — a playful twist on “musisi.”</span></div><p className="hero-personal-note">Some feelings arrive before the words do. I’m curious about the music that meets us there.</p><div className="hero-bottom"><button className="hero-explore" onClick={()=>enterRoom('explore')}>Step inside <ArrowDown size={15}/></button><span className="hero-aside">Curiosity sounds like<br/><em>something like this.</em></span></div></div>
-      <div className="hero-art" aria-label="Illustration of a lilac vinyl record partly tucked into a cream sleeve, with a bunny doodle and listening notes"><div className="record-sleeve"><span className="sleeve-mark" aria-hidden="true"/><span className="sleeve-bunny" aria-hidden="true">(\_/)<br/>( •ᴗ•)</span></div><div className="vinyl-record" aria-hidden="true"><div className="record-grooves"/><div className="record-label">Musyi’s<br/>listening notes<span className="label-hole"/></div></div><span className="hand-note">a little music,<br/>a lot of feelings.</span><aside className="listening-note">On my playlist:<br/><strong>BTS, especially Jungkook,</strong><br/>and <strong>Ariana Grande.</strong></aside></div><a className="hero-scroll" href="#about">SCROLL A LITTLE <ArrowDown size={13}/></a><span className="hero-edition">VOL. 01 · A PERSONAL STUDY</span>
+    <section className="hero" id="home" onPointerMove={(event)=>{if(event.pointerType==='touch')return;const box=event.currentTarget.getBoundingClientRect();event.currentTarget.style.setProperty('--scene-x',`${((event.clientX-box.left)/box.width-.5)*7}px`);event.currentTarget.style.setProperty('--scene-y',`${((event.clientY-box.top)/box.height-.5)*7}px`)}}>
+      <div className="hero-copy"><div className="section-number"><span>01</span><i/> MIND MELODY</div><p className="hero-overline">A small study of big feelings</p><h1 className="hero-title"><span>Mind</span><em>Melody</em></h1><p className="hero-subtitle">Exploring humans through psychology,<br/>music, and research.</p><p className="hero-personal-note">Some feelings arrive before the words do. I’m curious about the music that meets us there.</p><div className="hero-bottom"><button className="hero-explore" onClick={()=>enterRoom('explore')}>Explore <ArrowDown size={15}/></button></div></div>
+      <div className="hero-art"><svg className="scene-thread" viewBox="0 0 560 260" fill="none" aria-hidden="true"><path d="M8 160 C72 160 74 102 112 132 S164 186 202 126 S245 105 270 121 C298 140 310 162 342 150 S397 116 423 126 S467 138 545 66"/></svg><div className="record-sleeve"><span className="sleeve-mark" aria-hidden="true"/><span className="sleeve-bunny" aria-hidden="true"><i/><b>(\\_/)<br/>( •ᴗ•)</b></span><span className="sleeve-annotation">a little music,<br/>a lot of feelings.</span></div><div className="vinyl-record" aria-hidden="true"><span className="record-grooves"/><span className="record-label">Musyi’s<br/>listening notes<span className="label-hole"/></span></div><span className="scene-greeting">hey, I’m Syan.</span><aside className="listening-note">On my playlist:<br/><strong>BTS, especially Jungkook,</strong><br/>and <strong>Ariana Grande.</strong></aside><button className={`piano-invite ${pianoPlaying?'is-playing':''}`} onClick={()=>void playPianoPhrase()} aria-pressed={pianoPlaying}>{pianoPlaying?<><VolumeX size={13}/> stop the piano</>:<><Music2 size={13}/> a little piano?</>}</button><span className="piano-status" role="status" aria-live="polite">{pianoError?'Piano sound isn’t available right now.':pianoPlaying?'A little original piano phrase is playing.':''}</span></div><a className="hero-scroll" href="#about">SCROLL A LITTLE <ArrowDown size={13}/></a><span className="hero-edition">VOL. 01 · A PERSONAL STUDY</span>
     </section>
+
 
     <section className="about-section section-pad" id="about"><div className="section-number"><span>02</span><i/> INSIDE SYAN’S MIND</div><div className="about-layout"><div className="about-title"><p className="section-label">A curious human, first</p><h2>Inside Syan’s<br/><em>mind.</em></h2><div className="about-stamp"><Cat size={18}/><span>currently collecting<br/>little things that matter</span></div></div><div className="about-story"><p className="about-lede">Hi, I’m Syan—short for Isyana Arlisya.</p><p>I’m curious about people, stories, emotions, music, and the way small moments can shape how we feel. I tend to save little observations like other people save ticket stubs.</p></div></div><div className="thoughts-row">{thoughts.map((item,index)=>{const Icon=item.icon;return <motion.article className={`thought thought-${index+1}`} key={item.title} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.55,delay:index*.07}} whileHover={{y:-5,rotate:index%2?1:-1}}><span className="thought-num">0{index+1}</span><Icon size={19} strokeWidth={1.5}/><h3>{item.title}</h3><p>{item.text}</p><span className="thought-scribble">{index===1?'♪':index===3?'little note ↗':'·'}</span></motion.article>})}</div><div className="about-bottom"><span>ISYANA ARLISYA</span><i/><span>ASPIRING S1 PSYCHOLOGY STUDENT</span><i/><span>FUTURE RESEARCHER</span></div></section>
 
