@@ -36,7 +36,15 @@ export function MindMelody() {
   const [impact, setImpact] = useState(62)
   const [muted, setMuted] = useState(false)
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
+  const [motionPaused, setMotionPaused] = useState(false)
+  const [heroVisible, setHeroVisible] = useState(true)
+  const [tabVisible, setTabVisible] = useState(true)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [bunnyMove, setBunnyMove] = useState('rest')
   const carousel = useRef<HTMLDivElement>(null)
+  const heroRef = useRef<HTMLElement>(null)
+  const bunnyTimer = useRef<number | null>(null)
+  const bunnyBusy = useRef(false)
   const audio = useRef<AudioContext | null>(null)
   const oscillators = useRef<{ oscillator: OscillatorNode; gain: GainNode }[]>([])
   const stopTimer = useRef<number | null>(null)
@@ -46,6 +54,61 @@ export function MindMelody() {
     window.addEventListener('keydown', key)
     return () => { window.removeEventListener('keydown', key); oscillators.current.forEach(({ oscillator }) => { try { oscillator.stop() } catch {} }); if (audio.current) void audio.current.close() }
   }, [])
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const update = () => setReducedMotion(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    const hero = heroRef.current
+    if (!hero) return
+    const observer = new IntersectionObserver(([entry]) => setHeroVisible(entry.isIntersecting), { threshold: 0.05 })
+    observer.observe(hero)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (reducedMotion || motionPaused || !heroVisible || !tabVisible) return
+    let sequenceTimer: number
+    const run = () => {
+      setBunnyMove('playful')
+      bunnyBusy.current = true
+      sequenceTimer = window.setTimeout(() => {
+        setBunnyMove('rest')
+        bunnyBusy.current = false
+        bunnyTimer.current = window.setTimeout(run, 8000 + Math.random() * 6000)
+      }, 2300)
+    }
+    bunnyTimer.current = window.setTimeout(() => {
+      setBunnyMove('greeting')
+      sequenceTimer = window.setTimeout(() => {
+        setBunnyMove('rest')
+        bunnyTimer.current = window.setTimeout(run, 8000 + Math.random() * 6000)
+      }, 1200)
+    }, 3900)
+    return () => {
+      if (bunnyTimer.current) window.clearTimeout(bunnyTimer.current)
+      if (sequenceTimer) window.clearTimeout(sequenceTimer)
+      bunnyBusy.current = false
+    }
+  }, [reducedMotion, motionPaused, heroVisible, tabVisible])
+
+  useEffect(() => {
+    const updateVisibility = () => setTabVisible(!document.hidden)
+    document.addEventListener('visibilitychange', updateVisibility)
+    return () => document.removeEventListener('visibilitychange', updateVisibility)
+  }, [])
+
+  const happyHop = () => {
+    if (reducedMotion || bunnyBusy.current) return
+    bunnyBusy.current = true
+    setBunnyMove('happy')
+    window.setTimeout(() => { setBunnyMove('rest'); bunnyBusy.current = false }, 900)
+  }
 
   const stopSound = useCallback(() => {
     if (stopTimer.current) window.clearTimeout(stopTimer.current)
@@ -143,15 +206,15 @@ export function MindMelody() {
 
     <header className="site-header"><a className="wordmark" href="#home" aria-label="Syan, home">syan<span>✳</span></a><div className="header-note">A MIND IN PROGRESS <span>·</span> ALWAYS CURIOUS</div><button className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><span>EXPLORE</span><Music2 size={16}/></button></header>
 
-    <section className="hero" id="home" onPointerMove={(event)=>{if(event.pointerType==='touch')return;const box=event.currentTarget.getBoundingClientRect();event.currentTarget.style.setProperty('--scene-x',`${((event.clientX-box.left)/box.width-.5)*7}px`);event.currentTarget.style.setProperty('--scene-y',`${((event.clientY-box.top)/box.height-.5)*7}px`)}}>
+    <section ref={heroRef} className="hero" id="home" data-motion-active={!motionPaused && heroVisible && tabVisible && !reducedMotion} onPointerMove={(event)=>{if(event.pointerType==='touch')return;const box=event.currentTarget.getBoundingClientRect();event.currentTarget.style.setProperty('--scene-x',`${((event.clientX-box.left)/box.width-.5)*7}px`);event.currentTarget.style.setProperty('--scene-y',`${((event.clientY-box.top)/box.height-.5)*7}px`)}}>
       <div className="hero-copy"><div className="section-number"><span>01</span><i/> MIND MELODY</div><p className="hero-overline">A small study of big feelings</p><h1 className="hero-title"><span>Mind</span><em>Melody</em></h1><p className="hero-subtitle">Exploring humans through psychology,<br/>music, and research.</p><p className="hero-personal-note">Some feelings arrive before the words do. I’m curious about the music that meets us there.</p><div className="hero-bottom"><button className="hero-explore" onClick={()=>enterRoom('explore')}>Explore <ArrowDown size={15}/></button></div></div>
-      <div className="hero-art"><svg className="scene-thread" viewBox="0 0 560 260" fill="none" aria-hidden="true"><path d="M8 160 C72 160 74 102 112 132 S164 186 202 126 S245 105 270 121 C298 140 310 162 342 150 S397 116 423 126 S467 138 545 66"/></svg><div className="record-sleeve"><span className="sleeve-mark" aria-hidden="true"/><span className="sleeve-bunny" aria-hidden="true"><i/><b>(\\_/)<br/>( •ᴗ•)</b></span><span className="sleeve-annotation">a little music,<br/>a lot of feelings.</span></div><div className="vinyl-record" aria-hidden="true"><span className="record-grooves"/><span className="record-label">Musyi’s<br/>listening notes<span className="label-hole"/></span></div><span className="scene-greeting">hey, I’m Syan.</span><aside className="listening-note">On my playlist:<br/><strong>BTS, especially Jungkook,</strong><br/>and <strong>Ariana Grande.</strong></aside><button className={`piano-invite ${pianoPlaying?'is-playing':''}`} onClick={()=>void playPianoPhrase()} aria-pressed={pianoPlaying}>{pianoPlaying?<><VolumeX size={13}/> stop the piano</>:<><Music2 size={13}/> a little piano?</>}</button><span className="piano-status" role="status" aria-live="polite">{pianoError?'Piano sound isn’t available right now.':pianoPlaying?'A little original piano phrase is playing.':''}</span></div><a className="hero-scroll" href="#about">SCROLL A LITTLE <ArrowDown size={13}/></a><span className="hero-edition">VOL. 01 · A PERSONAL STUDY</span>
+      <div className="hero-art"><svg className="scene-thread" viewBox="0 0 560 260" fill="none" aria-hidden="true"><path d="M8 160 C72 160 74 102 112 132 S164 186 202 126 S245 105 270 121 C298 140 310 162 342 150 S397 116 423 126 S467 138 545 66"/></svg><div className="record-sleeve"><span className="sleeve-mark" aria-hidden="true"/><button className={`sleeve-bunny bunny-${bunnyMove}`} type="button" aria-label="Say hello to the little bunny" onClick={happyHop} onPointerEnter={() => { if (!bunnyBusy.current && !reducedMotion) setBunnyMove('look') }} onPointerLeave={() => { if (!bunnyBusy.current) setBunnyMove('rest') }} onFocus={() => { if (!bunnyBusy.current && !reducedMotion) setBunnyMove('look') }} onBlur={() => { if (!bunnyBusy.current) setBunnyMove('rest') }}><svg viewBox="0 0 72 76" aria-hidden="true"><g className="bunny-ears"><path d="M27 34C18 22 18 4 25 4c8 0 9 17 10 28M42 31C43 17 52 4 57 8c6 5-2 20-9 29"/></g><g className="bunny-body"><path className="bunny-outline" d="M18 49c0-11 8-18 19-18s20 7 20 18-8 18-20 18S18 60 18 49Z"/><path className="bunny-face" d="M25 46c1-7 6-11 12-11s12 4 13 11c1 8-5 13-13 13s-13-5-12-13Z"/><path className="bunny-eye" d="M33 46v2m9-2v2"/><path className="bunny-nose" d="m36 51 2 1-2 2-2-2Z"/><path className="bunny-mouth" d="M36 54v2m0 0-3 1m3-1 3 1"/><path className="bunny-foot" d="M23 63c4 2 8 2 11 0m8 0c4 2 8 2 11 0"/></g></svg></button><span className="sleeve-annotation">a little music,<br/>a lot of feelings.</span></div><div className="vinyl-record" aria-hidden="true"><div className="record-spin"><span className="record-grooves"/><span className="record-label"><span className="label-hole"/></span><span className="record-detail"/></div></div><button className="motion-toggle" type="button" aria-pressed={motionPaused} onClick={() => setMotionPaused(!motionPaused)}>{motionPaused ? 'Resume motion' : 'Pause motion'}</button><span className="scene-greeting">hey, I’m Syan.</span><aside className="listening-note">On my playlist:<br/><strong>BTS, especially Jungkook,</strong><br/>and <strong>Ariana Grande.</strong></aside><button className={`piano-invite ${pianoPlaying?'is-playing':''}`} onClick={()=>void playPianoPhrase()} aria-pressed={pianoPlaying}>{pianoPlaying?<><VolumeX size={13}/> stop the piano</>:<><Music2 size={13}/> a little piano?</>}</button><span className="piano-status" role="status" aria-live="polite">{pianoError?'Piano sound isn’t available right now.':pianoPlaying?'A little original piano phrase is playing.':''}</span></div><a className="hero-scroll" href="#about">SCROLL A LITTLE <ArrowDown size={13}/></a><span className="hero-edition">VOL. 01 · A PERSONAL STUDY</span>
     </section>
 
 
-    <section className="about-section section-pad" id="about"><div className="section-number"><span>02</span><i/> INSIDE SYAN’S MIND</div><div className="about-layout"><div className="about-title"><p className="section-label">A curious human, first</p><h2>Inside Syan’s<br/><em>mind.</em></h2><div className="about-stamp"><Cat size={18}/><span>currently collecting<br/>little things that matter</span></div></div><div className="about-story"><p className="about-lede">Hi, I’m Syan—short for Isyana Arlisya.</p><p>I’m curious about people, stories, emotions, music, and the way small moments can shape how we feel. I tend to save little observations like other people save ticket stubs.</p></div></div><div className="thoughts-row">{thoughts.map((item,index)=>{const Icon=item.icon;return <motion.article className={`thought thought-${index+1}`} key={item.title} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.55,delay:index*.07}} whileHover={{y:-5,rotate:index%2?1:-1}}><span className="thought-num">0{index+1}</span><Icon size={19} strokeWidth={1.5}/><h3>{item.title}</h3><p>{item.text}</p><span className="thought-scribble">{index===1?'♪':index===3?'little note ↗':'·'}</span></motion.article>})}</div><div className="about-bottom"><span>ISYANA ARLISYA</span><i/><span>ASPIRING S1 PSYCHOLOGY STUDENT</span><i/><span>FUTURE RESEARCHER</span></div></section>
+    <section className="about-section section-pad" id="about"><div className="section-number"><span>02</span><i/> INSIDE SYAN’S MIND</div><div className="about-layout"><div className="about-title"><p className="section-label">A curious human, first</p><h2>Inside Syan’s<br/><em>mind.</em></h2><div className="about-stamp"><Cat size={18}/><span>currently collecting<br/>little things that matter</span></div></div><div className="about-story"><p className="about-lede">Hi, I’m Syan—short for Isyana Arlisya.</p><p>I’m curious about people, stories, emotions, music, and the way small moments can shape how we feel. I tend to save little observations like other people save ticket stubs.</p></div></div><div className="musyi-note"><div className="musyi-note-heading"><span>Why <em>Musyi?</em></span><span className="musyi-wordplay">musisi <i aria-hidden="true">⟶</i> Musyi</span></div><p>Syan is what you can call me. Musyi is the name I write under—a playful twist on the Indonesian word ‘musisi’, meaning musician. A little wordplay that brings my love of writing and music into the same name.</p><span className="musyi-handnote">a little wordplay, a little music, still me.</span></div><div className="thoughts-row">{thoughts.map((item,index)=>{const Icon=item.icon;return <motion.article className={`thought thought-${index+1}`} key={item.title} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.55,delay:index*.07}} whileHover={{y:-5,rotate:index%2?1:-1}}><span className="thought-num">0{index+1}</span><Icon size={19} strokeWidth={1.5}/><h3>{item.title}</h3><p>{item.text}</p><span className="thought-scribble">{index===1?'♪':index===3?'little note ↗':'·'}</span></motion.article>})}</div><div className="about-bottom"><span>ISYANA ARLISYA</span><i/><span>ASPIRING S1 PSYCHOLOGY STUDENT</span><i/><span>FUTURE RESEARCHER</span></div></section>
 
-    <section className="music-section section-pad" id="music"><div className="section-number"><span>03</span><i/> WHY I LOVE MUSIC</div><div className="music-layout"><div className="music-story"><p className="section-label">A feeling with a melody</p><h2>Some songs<br/>feel like <em>being known.</em></h2><p>Music has always helped me understand emotions, stories, and people. I grew up loving BTS—especially Jungkook—and Ariana Grande. Their music made me wonder how a song can shift a mood, bring comfort, or make an ordinary moment stay with you.</p><p>Not because every feeling needs a soundtrack. Sometimes it just helps to know someone else has felt something like it.</p><motion.div className="music-dream" initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.65}}><p>I love listening, but I also dream of making music of my own. Of giving a feeling a melody, then letting someone else find their own meaning in it.</p><p>I write as Musyi—a playful twist on ‘musisi’, and a little nod to that dream.</p></motion.div></div><div className="music-art"><div className="music-cloud cloud-one"/><div className="music-cloud cloud-two"/><div className="music-disc"><span>♫</span></div><div className="music-staff">{Array.from({length:5},(_,i)=><i key={i}/>)}<span className="staff-note">♪</span><span className="staff-note second">♫</span></div><div className="music-sparkle">✳</div><span className="music-pet pet-rabbit"><Rabbit size={18}/></span><span className="music-pet pet-cat"><Cat size={16}/></span><span className="music-heart">♥</span><span className="music-jk">just a tiny nod · JK</span></div></div></section>
+    <section className="music-section section-pad" id="music"><div className="section-number"><span>03</span><i/> WHY I LOVE MUSIC</div><div className="music-layout"><div className="music-story"><p className="section-label">A feeling with a melody</p><h2>Some songs<br/>feel like <em>being known.</em></h2><p>Music has always helped me understand emotions, stories, and people. I grew up loving BTS—especially Jungkook—and Ariana Grande. Their music made me wonder how a song can shift a mood, bring comfort, or make an ordinary moment stay with you.</p><p>Not because every feeling needs a soundtrack. Sometimes it just helps to know someone else has felt something like it.</p><motion.div className="music-dream" initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.65}}><p>I love listening, but I also dream of making music of my own. Of giving a feeling a melody, then letting someone else find their own meaning in it.</p></motion.div></div><div className="music-art"><div className="music-cloud cloud-one"/><div className="music-cloud cloud-two"/><div className="music-disc"><span>♫</span></div><div className="music-staff">{Array.from({length:5},(_,i)=><i key={i}/>)}<span className="staff-note">♪</span><span className="staff-note second">♫</span></div><div className="music-sparkle">✳</div><span className="music-pet pet-rabbit"><Rabbit size={18}/></span><span className="music-pet pet-cat"><Cat size={16}/></span><span className="music-heart">♥</span><span className="music-jk">just a tiny nod · JK</span></div></div></section>
 
     <section className="psych-section section-pad" id="psychology"><div className="section-number"><span>04</span><i/> WHY I CHOOSE PSYCHOLOGY</div><div className="psych-layout"><div className="psych-art"><div className="mind-shape"><span/><i/><i/><i/></div><span className="psych-orbit orbit-1"/><span className="psych-orbit orbit-2"/><span className="psych-note note-psych">♫</span><span className="psych-note note-heart">♥</span><span className="psych-note note-spark">✳</span><span className="psych-caption">the mind is a whole universe</span></div><div className="psych-story"><p className="section-label">A question I keep coming back to</p><h2>People are<br/><em>worth understanding.</em></h2><p>I want to study psychology because I’m deeply curious about people—their feelings, thoughts, and the small moments that shape them. I believe understanding ourselves can help us feel less alone and find gentler ways to grow.</p><p>And music keeps finding its way into that question: how do sound, emotion, and well-being shape one another? Someday, I hope to explore that as a psychology researcher.</p><motion.p className="psych-reflection" initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.65}}>I want to learn how to listen without rushing to an answer. To ask better questions, and to remember that there is always more to a person than what we first see.</motion.p><button className="psych-link" onClick={()=>enterRoom('experiment')}>A question I’m carrying <ArrowUpRight size={14}/></button></div></div><motion.div className="about-closing" initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.35}} transition={{duration:.75}}><p>Maybe that’s where music and psychology meet for me:<br/>wanting to understand what we feel,<br/>and finding a way to give it room.</p><span>— Musyi</span></motion.div></section>
 
