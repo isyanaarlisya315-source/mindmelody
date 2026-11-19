@@ -99,3 +99,28 @@
 @media(hover:hover) and (pointer:fine){.hero .hero-art:hover .vinyl-record{transform:translate(17px,-2px) rotate(4deg)}}
 @media(max-width:640px){.sleeve-bunny{width:57px;height:62px}.motion-toggle{right:2%;bottom:0;font-size:7px}.hero[data-motion-active="false"] .hero-art{animation-play-state:paused}}
 @media(prefers-reduced-motion:reduce){.record-spin{animation:none!important}.sleeve-bunny *{animation:none!important}.sleeve-bunny:hover .bunny-ears,.sleeve-bunny:focus-visible .bunny-ears{transform:rotate(-8deg)}}
+
+/* Opening the notebook */
+.opening-intro{position:fixed;inset:0;z-index:50;display:grid;place-items:center;overflow:hidden;background-color:#faf6ef;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='.07'/%3E%3C/svg%3E");animation:opening-curtain .75s 2.05s cubic-bezier(.7,0,.25,1) both;will-change:transform}
+.opening-content{width:min(92vw,520px);text-align:center}
+.opening-mark{height:65px;display:flex;align-items:center;justify-content:center;position:relative;margin:0 auto 20px;width:min(88vw,390px)}
+.opening-wave{width:100%;height:52px;overflow:visible}
+.opening-wave path{stroke:#aa92c8;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:520;stroke-dashoffset:520;animation:opening-draw 1.05s .08s ease-out forwards}
+.opening-bunny{position:absolute;left:calc(50% - 194px);top:17px;width:34px;height:38px;color:#8b788f;opacity:0;animation:opening-hop .65s .72s cubic-bezier(.25,.8,.25,1) forwards}
+.opening-bunny svg{width:100%;height:100%;overflow:visible}
+.opening-bunny svg>path{fill:none;stroke:#9b829f;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.opening-bunny svg>path:nth-of-type(2){fill:#faf6ef}
+.opening-bunny svg>path:first-of-type{transform-origin:25px 23px;animation:opening-twitch .32s 1s ease-in-out 2}
+.opening-intro h1{font:500 clamp(42px,7vw,67px)/1.08 var(--serif);letter-spacing:-2px;color:var(--blue);margin:0;opacity:0;animation:opening-copy .55s .95s ease-out forwards}
+.opening-intro h1 em{color:#9d82bd;font-weight:500}
+.opening-intro p{font:11px var(--mono);letter-spacing:.2px;color:#77737b;margin:12px 0 0;opacity:0;animation:opening-copy .45s 1.25s ease-out forwards}
+.mind-app[data-opening="true"] .record-spin{animation-play-state:paused}
+.about-story .about-lede{font:16px/1.85 var(--serif);color:var(--blue);margin-bottom:12px}
+.identity-annotation{display:block;width:max-content;max-width:100%;margin-top:9px;color:#947ca9;font:italic 12px var(--serif);transform:rotate(-2deg)}
+@keyframes opening-draw{to{stroke-dashoffset:0}}
+@keyframes opening-copy{to{opacity:1;transform:translateY(0)}}
+@keyframes opening-hop{0%{opacity:0;transform:translateY(8px)}20%{opacity:1}48%{transform:translateY(-8px)}72%{transform:translateY(0)}86%{transform:translateY(-3px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes opening-twitch{0%,100%{rotate:0deg}50%{rotate:-8deg}}
+@keyframes opening-curtain{to{transform:translateY(-101%)}}
+@media(max-width:440px){.opening-bunny{left:calc(50% - 43vw)}.opening-content{width:94vw}.opening-intro p{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.opening-intro,.opening-wave path,.opening-bunny,.opening-bunny svg>path:first-of-type,.opening-intro h1,.opening-intro p{animation:none!important;opacity:1;transform:none}.mind-app[data-opening="true"] .record-spin{animation-play-state:running}}

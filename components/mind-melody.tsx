@@ -39,6 +39,7 @@ export function MindMelody() {
   const [motionPaused, setMotionPaused] = useState(false)
   const [heroVisible, setHeroVisible] = useState(true)
   const [tabVisible, setTabVisible] = useState(true)
+  const [openingIntro, setOpeningIntro] = useState(true)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [bunnyMove, setBunnyMove] = useState('rest')
   const carousel = useRef<HTMLDivElement>(null)
@@ -96,6 +97,12 @@ export function MindMelody() {
       bunnyBusy.current = false
     }
   }, [reducedMotion, motionPaused, heroVisible, tabVisible])
+
+  useEffect(() => {
+    if (reducedMotion) { setOpeningIntro(false); return }
+    const timer = window.setTimeout(() => setOpeningIntro(false), 2800)
+    return () => window.clearTimeout(timer)
+  }, [reducedMotion])
 
   useEffect(() => {
     const updateVisibility = () => setTabVisible(!document.hidden)
@@ -201,7 +208,8 @@ export function MindMelody() {
   const response = impact > 70 ? 'Musik jelas jadi bagian penting dari dunia emosimu.' : impact > 35 ? 'Kamu tahu kapan sebuah lagu bisa menemanimu.' : 'Mungkin kamu peneliti psikologi musik masa depan.'
   const enterRoom = (next: string) => { setMenuOpen(false); setRoom(next) }
 
-  return <main className="mind-app">
+  return <main className="mind-app" data-opening={openingIntro}>
+    {openingIntro && <div className="opening-intro" aria-hidden="true"><div className="opening-content"><div className="opening-mark"><svg className="opening-wave" viewBox="0 0 330 52" fill="none"><path d="M2 27h73c10 0 11-17 20-17s10 33 20 33 10-25 20-25 10 15 20 15 10-23 20-23 11 17 21 17h132"/></svg><span className="opening-bunny"><svg viewBox="0 0 48 54" fill="none"><path className="opening-ears" d="M17 23C9 12 12 2 16 3s8 11 8 18m5 1c0-11 7-19 11-16s-1 13-6 20"/><path d="M10 37c0-9 6-15 14-15s15 6 15 15-6 14-15 14S10 45 10 37Z"/><path d="M19 36v2m10-2v2m-5 3v2m0 0-2 1m2-1 2 1"/></svg></span></div><h1>Mind <em>Melody</em></h1><p>a little music, a little curiosity — by Syan</p></div></div>}
     <div className="grain" aria-hidden="true" />
 
     <header className="site-header"><a className="wordmark" href="#home" aria-label="Syan, home">syan<span>✳</span></a><div className="header-note">A MIND IN PROGRESS <span>·</span> ALWAYS CURIOUS</div><button className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} onClick={()=>setMenuOpen(true)}><span>EXPLORE</span><Music2 size={16}/></button></header>
@@ -212,7 +220,7 @@ export function MindMelody() {
     </section>
 
 
-    <section className="about-section section-pad" id="about"><div className="section-number"><span>02</span><i/> INSIDE SYAN’S MIND</div><div className="about-layout"><div className="about-title"><p className="section-label">A curious human, first</p><h2>Inside Syan’s<br/><em>mind.</em></h2><div className="about-stamp"><Cat size={18}/><span>currently collecting<br/>little things that matter</span></div></div><div className="about-story"><p className="about-lede">Hi, I’m Syan—short for Isyana Arlisya.</p><p>I’m curious about people, stories, emotions, music, and the way small moments can shape how we feel. I tend to save little observations like other people save ticket stubs.</p></div></div><div className="musyi-note"><div className="musyi-note-heading"><span>Why <em>Musyi?</em></span><span className="musyi-wordplay">musisi <i aria-hidden="true">⟶</i> Musyi</span></div><p>Syan is what you can call me. Musyi is the name I write under—a playful twist on the Indonesian word ‘musisi’, meaning musician. A little wordplay that brings my love of writing and music into the same name.</p><span className="musyi-handnote">a little wordplay, a little music, still me.</span></div><div className="thoughts-row">{thoughts.map((item,index)=>{const Icon=item.icon;return <motion.article className={`thought thought-${index+1}`} key={item.title} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.55,delay:index*.07}} whileHover={{y:-5,rotate:index%2?1:-1}}><span className="thought-num">0{index+1}</span><Icon size={19} strokeWidth={1.5}/><h3>{item.title}</h3><p>{item.text}</p><span className="thought-scribble">{index===1?'♪':index===3?'little note ↗':'·'}</span></motion.article>})}</div><div className="about-bottom"><span>ISYANA ARLISYA</span><i/><span>ASPIRING S1 PSYCHOLOGY STUDENT</span><i/><span>FUTURE RESEARCHER</span></div></section>
+    <section className="about-section section-pad" id="about"><div className="section-number"><span>02</span><i/> INSIDE SYAN’S MIND</div><div className="about-layout"><div className="about-title"><p className="section-label">A curious human, first</p><h2>Inside Syan’s<br/><em>mind.</em></h2><div className="about-stamp"><Cat size={18}/><span>currently collecting<br/>little things that matter</span></div></div><div className="about-story"><p className="about-lede">Hi, I’m Isyana Arlisya. You can call me Syan—or Musyi, sometimes. Musyi is a playful twist on ‘musisi’, the Indonesian word for musician. It’s another name I go by, and the pen name I use when I write.</p><p>I’m curious about people, stories, emotions, music, and the way small moments can shape how we feel. I tend to save little observations like other people save ticket stubs.</p><span className="identity-annotation">Syan or Musyi—still me.</span></div></div><div className="thoughts-row">{thoughts.map((item,index)=>{const Icon=item.icon;return <motion.article className={`thought thought-${index+1}`} key={item.title} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.55,delay:index*.07}} whileHover={{y:-5,rotate:index%2?1:-1}}><span className="thought-num">0{index+1}</span><Icon size={19} strokeWidth={1.5}/><h3>{item.title}</h3><p>{item.text}</p><span className="thought-scribble">{index===1?'♪':index===3?'little note ↗':'·'}</span></motion.article>})}</div><div className="about-bottom"><span>ISYANA ARLISYA</span><i/><span>ASPIRING S1 PSYCHOLOGY STUDENT</span><i/><span>FUTURE RESEARCHER</span></div></section>
 
     <section className="music-section section-pad" id="music"><div className="section-number"><span>03</span><i/> WHY I LOVE MUSIC</div><div className="music-layout"><div className="music-story"><p className="section-label">A feeling with a melody</p><h2>Some songs<br/>feel like <em>being known.</em></h2><p>Music has always helped me understand emotions, stories, and people. I grew up loving BTS—especially Jungkook—and Ariana Grande. Their music made me wonder how a song can shift a mood, bring comfort, or make an ordinary moment stay with you.</p><p>Not because every feeling needs a soundtrack. Sometimes it just helps to know someone else has felt something like it.</p><motion.div className="music-dream" initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true,amount:.25}} transition={{duration:.65}}><p>I love listening, but I also dream of making music of my own. Of giving a feeling a melody, then letting someone else find their own meaning in it.</p></motion.div></div><div className="music-art"><div className="music-cloud cloud-one"/><div className="music-cloud cloud-two"/><div className="music-disc"><span>♫</span></div><div className="music-staff">{Array.from({length:5},(_,i)=><i key={i}/>)}<span className="staff-note">♪</span><span className="staff-note second">♫</span></div><div className="music-sparkle">✳</div><span className="music-pet pet-rabbit"><Rabbit size={18}/></span><span className="music-pet pet-cat"><Cat size={16}/></span><span className="music-heart">♥</span><span className="music-jk">just a tiny nod · JK</span></div></div></section>
 
