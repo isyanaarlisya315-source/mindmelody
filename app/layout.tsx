@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Mind Melody — Syan',
-  description: 'Mengenal manusia lewat psikologi, musik, dan rasa ingin tahu. Personal portfolio Isyana Arlisya (Syan).',
+  description: 'Mind Melody — a personal world by Syan, exploring people, emotions, psychology, music, and research.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#faf7f2',
+  themeColor: '#faf6ef',
 }
 
 export default function RootLayout({
