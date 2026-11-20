@@ -43,7 +43,6 @@ export function MindMelody() {
   const [toyPosition, setToyPosition] = useState({ x: 78, y: 75 })
   const toyArea = useRef<HTMLDivElement>(null)
   const toyDragged = useRef(false)
-  const customCursor = useRef<HTMLSpanElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [room, setRoom] = useState<string | null>(null)
   const [mood, setMood] = useState<Mood | null>(moods[0])
@@ -177,59 +176,6 @@ export function MindMelody() {
     document.addEventListener('visibilitychange', updateVisibility)
     return () => document.removeEventListener('visibilitychange', updateVisibility)
   }, [])
-
-  useEffect(() => {
-    const cursor = customCursor.current
-    const coarsePointer = window.matchMedia('(pointer: coarse)')
-    if (!cursor?.querySelector('svg') || coarsePointer.matches) return
-
-    let frame = 0
-    let targetX = 0
-    let targetY = 0
-    let currentX = 0
-    let currentY = 0
-    const root = document.documentElement
-    const hideCursor = () => {
-      cursor.style.opacity = '0'
-      root.classList.remove('note-cursor-active')
-    }
-    const animateCursor = () => {
-      const easing = reducedMotion ? 1 : 0.28
-      currentX += (targetX - currentX) * easing
-      currentY += (targetY - currentY) * easing
-      cursor.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`
-      if (Math.abs(targetX - currentX) > 0.1 || Math.abs(targetY - currentY) > 0.1) {
-        frame = window.requestAnimationFrame(animateCursor)
-      } else {
-        frame = 0
-      }
-    }
-    const updateCursor = (event: PointerEvent) => {
-      if (event.pointerType === 'touch') {
-        hideCursor()
-        return
-      }
-      targetX = event.clientX + 12
-      targetY = event.clientY + 10
-      if (!frame) frame = window.requestAnimationFrame(animateCursor)
-      const interactive = event.target instanceof Element && Boolean(event.target.closest('a,button,input,select,textarea,summary,p,h1,h2,h3,h4,li,label,small,[role="slider"]'))
-      root.classList.add('note-cursor-active')
-      cursor.style.opacity = interactive ? '0' : '1'
-    }
-    const leaveDocument = () => hideCursor()
-
-    root.classList.add('note-cursor-ready')
-    window.addEventListener('pointermove', updateCursor, { passive: true })
-    document.addEventListener('pointerleave', leaveDocument)
-    window.addEventListener('blur', leaveDocument)
-    return () => {
-      window.removeEventListener('pointermove', updateCursor)
-      document.removeEventListener('pointerleave', leaveDocument)
-      window.removeEventListener('blur', leaveDocument)
-      if (frame) window.cancelAnimationFrame(frame)
-      root.classList.remove('note-cursor-ready', 'note-cursor-active')
-    }
-  }, [reducedMotion])
 
   useEffect(() => {
     if (masterGain.current && audio.current) masterGain.current.gain.setTargetAtTime(muted ? 0 : volume, audio.current.currentTime, 0.025)
@@ -482,7 +428,6 @@ export function MindMelody() {
   const enterRoom = (next: string) => { setMenuOpen(false); setRoom(next) }
 
   return <>
-    <span ref={customCursor} className="custom-cursor" aria-hidden="true"><svg viewBox="0 0 20 24" width="17" height="20" fill="none"><path d="M12.8 3v12.1a3.1 3.1 0 1 1-1.5-2.7V6.2l6.1-1.5v8.1a3.1 3.1 0 1 1-1.5-2.7V3.7L12.8 4.3" fill="#9b81ba" stroke="#2f4858" strokeWidth=".8" strokeLinejoin="round"/><path d="M4 20c1.4-.3 2.3-1.1 2.7-2.3" stroke="#e88c7d" strokeWidth="1.1" strokeLinecap="round"/></svg></span>
     {openingIntro && <div className={`opening-intro ${introEntering ? 'opening-leaving' : ''}`} data-ready={introReady} role="dialog" aria-modal="true" aria-labelledby="opening-title"><div className="opening-content"><div className="opening-mark"><svg className="opening-wave" viewBox="0 0 330 52" fill="none" aria-hidden="true"><path d="M2 27h73c10 0 11-17 20-17s10 33 20 33 10-25 20-25 10 15 20 15 10-23 20-23 11 17 21 17h132"/></svg><span className="opening-bunny" aria-hidden="true"><svg viewBox="0 0 48 54" fill="none"><path className="opening-ears" d="M17 23C9 12 12 2 16 3s8 11 8 18m5 1c0-11 7-19 11-16s-1 13-6 20"/><path d="M10 37c0-9 6-15 14-15s15 6 15 15-6 14-15 14S10 45 10 37Z"/><path d="M19 36v2m10-2v2m-5 3v2m0 0-2 1m2-1 2 1"/></svg></span></div><h1 id="opening-title">Mind <em>Melody</em></h1><p>a little music, a little curiosity — by Syan</p><p className="opening-meaning">Mind Melody adalah caraku mempertemukan pikiran dan nada—sebab tidak semua yang kita rasakan mudah menjadi kata, kadang ia lebih dulu menemukan bentuknya dalam musik.</p><p className="opening-supporting">Kalau hari ini rasamu belum punya nama, kamu boleh masuk tanpa harus menjelaskannya.</p><div className={`opening-actions ${introReady ? 'is-ready' : ''}`}><button ref={introButtonRef} className="opening-enter" type="button" disabled={!introReady || introEntering} onClick={() => enterHero()}><span>Enter</span><ArrowRight size={15} aria-hidden="true"/></button><span className="opening-support">come on in.</span></div><button className="opening-skip" type="button" disabled={introEntering} onClick={() => enterHero(true)}>Skip intro</button></div></div>}
     <main className="mind-app" data-opening={openingIntro} data-entered={heroEntered} inert={openingIntro}>
     <div className="grain" aria-hidden="true" />
