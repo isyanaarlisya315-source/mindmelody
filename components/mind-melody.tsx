@@ -179,22 +179,57 @@ export function MindMelody() {
   }, [])
 
   useEffect(() => {
+    const cursor = customCursor.current
+    const coarsePointer = window.matchMedia('(pointer: coarse)')
+    if (!cursor?.querySelector('svg') || coarsePointer.matches) return
+
+    let frame = 0
+    let targetX = 0
+    let targetY = 0
+    let currentX = 0
+    let currentY = 0
+    const root = document.documentElement
+    const hideCursor = () => {
+      cursor.style.opacity = '0'
+      root.classList.remove('note-cursor-active')
+    }
+    const animateCursor = () => {
+      const easing = reducedMotion ? 1 : 0.28
+      currentX += (targetX - currentX) * easing
+      currentY += (targetY - currentY) * easing
+      cursor.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`
+      if (Math.abs(targetX - currentX) > 0.1 || Math.abs(targetY - currentY) > 0.1) {
+        frame = window.requestAnimationFrame(animateCursor)
+      } else {
+        frame = 0
+      }
+    }
     const updateCursor = (event: PointerEvent) => {
-      if (!customCursor.current) return
       if (event.pointerType === 'touch') {
-        customCursor.current.style.opacity = '0'
-        document.documentElement.classList.remove('note-cursor-active')
+        hideCursor()
         return
       }
-      document.documentElement.classList.add('note-cursor-active')
+      targetX = event.clientX + 12
+      targetY = event.clientY + 10
+      if (!frame) frame = window.requestAnimationFrame(animateCursor)
       const interactive = event.target instanceof Element && Boolean(event.target.closest('a,button,input,select,textarea,summary,p,h1,h2,h3,h4,li,label,small,[role="slider"]'))
-      customCursor.current.style.opacity = interactive ? '0' : '1'
-      customCursor.current.style.transform = `translate3d(${event.clientX + 12}px, ${event.clientY + 10}px, 0)`
+      root.classList.add('note-cursor-active')
+      cursor.style.opacity = interactive ? '0' : '1'
     }
+    const leaveDocument = () => hideCursor()
+
+    root.classList.add('note-cursor-ready')
     window.addEventListener('pointermove', updateCursor, { passive: true })
-    document.documentElement.classList.add('note-cursor-ready')
-    return () => { window.removeEventListener('pointermove', updateCursor); document.documentElement.classList.remove('note-cursor-ready', 'note-cursor-active') }
-  }, [])
+    document.addEventListener('pointerleave', leaveDocument)
+    window.addEventListener('blur', leaveDocument)
+    return () => {
+      window.removeEventListener('pointermove', updateCursor)
+      document.removeEventListener('pointerleave', leaveDocument)
+      window.removeEventListener('blur', leaveDocument)
+      if (frame) window.cancelAnimationFrame(frame)
+      root.classList.remove('note-cursor-ready', 'note-cursor-active')
+    }
+  }, [reducedMotion])
 
   useEffect(() => {
     if (masterGain.current && audio.current) masterGain.current.gain.setTargetAtTime(muted ? 0 : volume, audio.current.currentTime, 0.025)
